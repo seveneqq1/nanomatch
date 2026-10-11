@@ -7,7 +7,14 @@
 #include <new>
 #include <vector>
 
-#if defined(__APPLE__)
+#if defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
+#elif defined(__APPLE__)
+#include <time.h>
+#else
 #include <time.h>
 #endif
 
@@ -19,11 +26,26 @@ constexpr uint32_t kSeed    = 32'768;
 constexpr uint32_t kBins    = 96;
 
 [[nodiscard]] uint64_t nanos() noexcept {
-#if defined(__APPLE__)
+#if defined(_WIN32)
+    static const LARGE_INTEGER freq = [] {
+        LARGE_INTEGER f{};
+        QueryPerformanceFrequency(&f);
+        return f;
+    }();
+    LARGE_INTEGER t{};
+    QueryPerformanceCounter(&t);
+    const uint64_t q = static_cast<uint64_t>(t.QuadPart);
+    const uint64_t f = static_cast<uint64_t>(freq.QuadPart);
+    return (q / f) * 1'000'000'000ull + (q % f) * 1'000'000'000ull / f;
+#elif defined(__APPLE__)
     return clock_gettime_nsec_np(CLOCK_UPTIME_RAW);
 #else
     timespec ts{};
+#if defined(CLOCK_MONOTONIC_RAW)
     clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+#else
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
     return static_cast<uint64_t>(ts.tv_sec) * 1'000'000'000ull +
            static_cast<uint64_t>(ts.tv_nsec);
 #endif

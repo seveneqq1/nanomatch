@@ -18,25 +18,83 @@ nanomatch/
 └── tests/order_book_tests.cpp
 ```
 
-## Build
+## Launch
 
-Clang 15+ or GCC 12+, CMake 3.20+. Release adds `-O3 -march=native -flto`.
+You need **CMake 3.20+** and a **C++20** compiler (Clang 15+, Apple Clang, GCC 12+, or MSVC 19.3+ / Visual Studio 2022). Python 3 is optional and only used to rebuild the latency HTML chart.
+
+Clone, then follow the section for your OS.
 
 ```bash
+git clone https://github.com/seveneqq1/nanomatch.git
+cd nanomatch
+```
+
+### macOS (Terminal)
+
+Xcode command-line tools provide the compiler. Install CMake with Homebrew if `cmake --version` fails.
+
+```bash
+xcode-select --install
+brew install cmake python3
+
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure
+
 ./build/nanomatch_demo
+./build/nanomatch_bench docs/latency.html docs/latency.json
+python3 scripts/export_latency_html.py -i docs/latency.json -o docs/latency.html
+open docs/latency.html
 ```
+
+### Linux
+
+Debian / Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y cmake g++ python3
+
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j"$(nproc)"
+ctest --test-dir build --output-on-failure
+
+./build/nanomatch_demo
+./build/nanomatch_bench docs/latency.html docs/latency.json
+python3 scripts/export_latency_html.py -i docs/latency.json -o docs/latency.html
+xdg-open docs/latency.html
+```
+
+Fedora / RHEL: `sudo dnf install cmake gcc-c++ python3`. Arch: `sudo pacman -S cmake gcc python`.
+
+### Windows (PowerShell or cmd)
+
+Install [Visual Studio 2022](https://visualstudio.microsoft.com/) with the **Desktop development with C++** workload (MSVC) and [CMake](https://cmake.org/download/). Then from the repo root:
+
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
+
+.\build\Release\nanomatch_demo.exe
+.\build\Release\nanomatch_bench.exe docs\latency.html docs\latency.json
+python scripts\export_latency_html.py -i docs\latency.json -o docs\latency.html
+start docs\latency.html
+```
+
+Clang/GCC on Windows (MinGW, LLVM, or WSL) can use the same Unix-style commands as Linux, with binaries at `build\nanomatch_demo.exe` when the generator is Ninja or MinGW Makefiles:
+
+```powershell
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+.\build\nanomatch_demo.exe
+```
+
+WSL2 is the Linux flow inside Windows: install Ubuntu from the Store, then follow the Linux section.
 
 ## Benchmark
 
-`nanomatch_bench` seeds a 1,048,576-slot book, then times **1,000,000** mixed limit / market / cancel commands. Each sample is the monotonic-raw nanosecond delta around `process()`. It prints p50 / p90 / p99 / p99.9 and writes a standalone chart plus JSON:
-
-```bash
-./build/nanomatch_bench docs/latency.html latency_report.json
-python3 scripts/export_latency_html.py -i latency_report.json -o docs/latency.html
-```
+`nanomatch_bench` seeds a 1,048,576-slot book, then times **1,000,000** mixed limit / market / cancel commands. Each sample is the monotonic-raw nanosecond delta around `process()`. It prints p50 / p90 / p99 / p99.9 and writes a standalone chart plus JSON.
 
 Times are machine-specific. On Apple Silicon the virtual counter (`cntvct_el0`) typically ticks every ~42 ns, so a `0 ns` sample means the call finished inside one tick. Reproduce on an isolated core with turbo pinned if you are publishing numbers. A sample chart from this host lives in [`docs/latency.html`](docs/latency.html).
 
@@ -69,13 +127,3 @@ Template the capacities down for tests or a constrained binary:
 ```cpp
 using Tiny = nanomatch::OrderBook<2048, 128, 64, 2048>;
 ```
-
-## GitHub
-
-This tree is a local git repository. To publish it:
-
-```bash
-gh repo create nanomatch --public --source=. --remote=origin --push
-```
-
-Requires [GitHub CLI](https://cli.github.com/) authentication (`gh auth login`).

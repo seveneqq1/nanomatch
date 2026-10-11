@@ -19,9 +19,15 @@ function(nanomatch_apply_flags tgt)
     $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-Wall;-Wextra;-Wpedantic>
     $<$<AND:$<CONFIG:Release>,$<CXX_COMPILER_ID:Clang,AppleClang,GNU>>:-O3;-march=native;-flto>
     $<$<AND:$<CONFIG:RelWithDebInfo>,$<CXX_COMPILER_ID:Clang,AppleClang,GNU>>:-O3;-march=native>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4;/permissive-;/Zc:__cplusplus>
+    $<$<AND:$<CONFIG:Release>,$<CXX_COMPILER_ID:MSVC>>:/O2;/Oi;/GL>
   )
   target_link_options(${tgt} PRIVATE
     $<$<AND:$<CONFIG:Release>,$<CXX_COMPILER_ID:Clang,AppleClang,GNU>>:-flto>
+    $<$<AND:$<CONFIG:Release>,$<CXX_COMPILER_ID:MSVC>>:/LTCG>
+  )
+  target_compile_definitions(${tgt} PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:_CRT_SECURE_NO_WARNINGS>
   )
 endfunction()
 
